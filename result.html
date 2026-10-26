@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Check Your Result</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #1c2530;
+    --muted: #5d6b7a;
+    --paper: #fffdf8;
+    --bg: #e9eef2;
+    --line: #d5dce3;
+    --brand: #1f4e5f;
+    --pass: #1b7a4b;
+    --pass-bg: #e3f4ea;
+    --fail: #b3261e;
+    --fail-bg: #fbe7e5;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Inter", system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    padding: 32px 16px;
+  }
+  main { width: 100%; max-width: 640px; }
+  h1 {
+    font-family: "Fraunces", Georgia, serif;
+    font-size: clamp(1.8rem, 5vw, 2.4rem);
+    color: var(--brand);
+    margin-bottom: 6px;
+  }
+  .sub { color: var(--muted); margin-bottom: 24px; }
+
+  .search {
+    display: flex;
+    gap: 10px;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 10px;
+  }
+  .search input {
+    flex: 1;
+    min-width: 0;
+    border: none;
+    outline: none;
+    font: inherit;
+    font-size: 1.05rem;
+    padding: 8px 10px;
+    background: transparent;
+  }
+  .search button, .print {
+    font: inherit;
+    font-weight: 600;
+    background: var(--brand);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 22px;
+    cursor: pointer;
+  }
+  .search button:hover, .print:hover { background: #163b49; }
+  .search button:disabled { opacity: .6; cursor: wait; }
+  :focus-visible { outline: 3px solid #f0b429; outline-offset: 2px; }
+
+  #msg { margin-top: 16px; padding: 12px 14px; border-radius: 8px; display: none; }
+  #msg.error { display: block; background: var(--fail-bg); color: var(--fail); }
+  #msg.info { display: block; background: #fff; color: var(--muted); border: 1px solid var(--line); }
+
+  .card {
+    margin-top: 20px;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .card-head {
+    padding: 22px 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    border-bottom: 1px solid var(--line);
+  }
+  .card-head h2 { font-family: "Fraunces", Georgia, serif; font-size: 1.5rem; }
+  .card-head p { color: var(--muted); font-size: .95rem; margin-top: 2px; }
+  .badge {
+    font-weight: 700;
+    font-size: 1.05rem;
+    padding: 8px 18px;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+  .badge.pass { background: var(--pass-bg); color: var(--pass); }
+  .badge.fail { background: var(--fail-bg); color: var(--fail); }
+
+  .subjects { padding: 8px 24px; }
+  .row {
+    display: grid;
+    grid-template-columns: 100px 1fr 44px;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 0;
+    border-bottom: 1px dashed var(--line);
+  }
+  .row:last-child { border-bottom: none; }
+  .bar { height: 8px; background: #e6ebef; border-radius: 99px; overflow: hidden; }
+  .bar span { display: block; height: 100%; background: var(--brand); border-radius: 99px; }
+  .bar span.low { background: var(--fail); }
+  .row b { text-align: right; }
+
+  .summary {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    border-top: 1px solid var(--line);
+    background: #f6f3ea;
+  }
+  .summary div { padding: 16px 24px; }
+  .summary small { display: block; color: var(--muted); font-size: .8rem; }
+  .summary strong { font-size: 1.3rem; }
+
+  .print { margin-top: 16px; background: transparent; color: var(--brand); border: 1px solid var(--brand); }
+  .print:hover { background: var(--brand); color: #fff; }
+
+  @media (max-width: 480px) {
+    .row { grid-template-columns: 80px 1fr 38px; }
+    .card-head { flex-direction: column; }
+    .summary div { padding: 14px 12px; }
+  }
+  @media print {
+    body { background: #fff; padding: 0; }
+    .search, .print, #msg { display: none !important; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <h1>Check your result</h1>
+  <p class="sub">Enter your roll number to see your marks.</p>
+
+  <div class="search">
+    <input id="roll" type="text" inputmode="numeric" placeholder="Roll number, e.g. 1001" autocomplete="off" aria-label="Roll number">
+    <button id="btn" type="button">Get result</button>
+  </div>
+
+  <div id="msg" role="status"></div>
+  <div id="result"></div>
+</main>
+
+<script>
+  const API_URL = "https://script.google.com/macros/s/AKfycbzwh0dn9nES3nHBb53CXzxJEVydk8OlDaMK39ISdFcKVGKuA4T_qanrS7NrRIra9473Pg/exec";
+  const SUBJECTS = ["Urdu", "English", "Math", "Science", "Islamiat"];
+
+  const rollInput = document.getElementById("roll");
+  const btn = document.getElementById("btn");
+  const msg = document.getElementById("msg");
+  const result = document.getElementById("result");
+
+  function esc(v) {
+    return String(v ?? "").replace(/[&<>"']/g, c => (
+      { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]
+    ));
+  }
+
+  function showMsg(text, type) {
+    msg.textContent = text;
+    msg.className = type;
+  }
+
+  function clearMsg() {
+    msg.textContent = "";
+    msg.className = "";
+  }
+
+  async function getResult() {
+    const roll = rollInput.value.trim();
+    result.innerHTML = "";
+    if (!roll) {
+      showMsg("Enter your roll number.", "error");
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = "Searching...";
+    showMsg("Searching for your result...", "info");
+
+    try {
+      const res = await fetch(API_URL + "?roll=" + encodeURIComponent(roll));
+      const json = await res.json();
+
+      if (!json.success) {
+        showMsg(json.message || "Result not found.", "error");
+        return;
+      }
+      clearMsg();
+      render(json.data);
+    } catch (err) {
+      showMsg("Could not load the result. Check your internet connection and try again.", "error");
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "Get result";
+    }
+  }
+
+  function render(d) {
+    const status = String(d.Status || "").toLowerCase() === "pass" ? "pass" : "fail";
+
+    const rows = SUBJECTS.map(s => {
+      const marks = Number(d[s]) || 0;
+      const low = marks < 33 ? "low" : "";
+      return `
+        <div class="row">
+          <span>${s}</span>
+          <div class="bar"><span class="${low}" style="width:${Math.min(marks, 100)}%"></span></div>
+          <b>${esc(d[s])}</b>
+        </div>`;
+    }).join("");
+
+    result.innerHTML = `
+      <section class="card">
+        <div class="card-head">
+          <div>
+            <h2>${esc(d.Name)}</h2>
+            <p>Son/Daughter of ${esc(d.FatherName)} &middot; Class ${esc(d.Class)} &middot; Roll no. ${esc(d.RollNo)}</p>
+          </div>
+          <span class="badge ${status}">${status === "pass" ? "Pass" : "Fail"}</span>
+        </div>
+        <div class="subjects">${rows}</div>
+        <div class="summary">
+          <div><small>Total (out of 500)</small><strong>${esc(d.Total)}</strong></div>
+          <div><small>Percentage</small><strong>${esc(d.Percentage)}%</strong></div>
+          <div><small>Grade</small><strong>${esc(d.Grade)}</strong></div>
+        </div>
+      </section>
+      <button class="print" type="button" onclick="window.print()">Print result</button>`;
+  }
+
+  btn.addEventListener("click", getResult);
+  rollInput.addEventListener("keydown", e => { if (e.key === "Enter") getResult(); });
+</script>
+</body>
+</html>
