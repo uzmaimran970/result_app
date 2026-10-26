@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Quiz Admin Dashboard</title>
+<style>
+:root{--bg:#0e1118;--p:#161b26;--b:#232a3a;--t:#e6e9f0;--m:#8a93a6;--a:#5b8cff;--g:#3ecf8e;--r:#ff6b6b}
+*{box-sizing:border-box;margin:0}
+body{background:var(--bg);color:var(--t);font-family:"Segoe UI",system-ui,sans-serif;padding:24px;min-height:100vh}
+.w{max-width:1100px;margin:0 auto}
+.card{background:var(--p);border:1px solid var(--b);border-radius:14px;padding:22px}
+input{padding:12px 14px;background:var(--bg);border:1px solid var(--b);border-radius:8px;color:var(--t);font-size:15px;width:100%}
+input:focus,button:focus-visible{outline:2px solid var(--a)}
+button{background:var(--a);color:#fff;border:0;border-radius:8px;padding:11px 20px;font-size:14px;font-weight:600;cursor:pointer}
+button.o{background:transparent;border:1px solid var(--b);color:var(--t)}
+.hide{display:none}
+#login{max-width:380px;margin:12vh auto}
+#login h1{margin-bottom:16px;font-size:22px}
+#err{color:var(--r);font-size:14px;margin-top:10px}
+.hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;gap:12px;flex-wrap:wrap}
+.hd h1{font-size:24px}.hd div{display:flex;gap:10px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}
+.st span{color:var(--m);font-size:13px}.st b{display:block;font-size:30px;margin-top:6px}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.col h2{font-size:17px;margin-bottom:14px;display:flex;justify-content:space-between}
+.col.pass h2{color:var(--g)}.col.fail h2{color:var(--r)}
+.col.pass{border-top:3px solid var(--g)}.col.fail{border-top:3px solid var(--r)}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{color:var(--m);font-weight:500;text-align:left;padding:8px 6px;border-bottom:1px solid var(--b)}
+td{padding:10px 6px;border-bottom:1px solid var(--b)}
+tr.row{cursor:pointer}tr.row:hover td{background:#1b2130}
+.det td{background:var(--bg);color:var(--m);font-size:13px;line-height:1.7}
+.det b{color:var(--t)}.ok{color:var(--g)}.no{color:var(--r)}
+.empty{color:var(--m);padding:18px 6px;text-align:center}
+@media(max-width:800px){.stats{grid-template-columns:1fr 1fr}.cols{grid-template-columns:1fr}}
+</style></head><body><div class="w">
+
+<div id="login" class="card">
+ <h1>Admin login</h1>
+ <input type="password" id="pw" placeholder="Password" onkeydown="if(event.key==='Enter')login()">
+ <p id="err"></p>
+ <div style="margin-top:16px"><button onclick="login()">Sign in</button></div>
+</div>
+
+<div id="dash" class="hide">
+ <div class="hd"><h1>Quiz results</h1>
+  <div><input id="srch" placeholder="Search name or roll no" oninput="render()" style="width:220px"><button class="o" onclick="load()">Refresh</button><button class="o" onclick="logout()">Sign out</button></div></div>
+ <div class="stats">
+  <div class="card st"><span>Total students</span><b id="sT">0</b></div>
+  <div class="card st"><span>Passed</span><b id="sP" style="color:var(--g)">0</b></div>
+  <div class="card st"><span>Failed</span><b id="sF" style="color:var(--r)">0</b></div>
+  <div class="card st"><span>Average score</span><b id="sA">0%</b></div>
+ </div>
+ <div class="cols">
+  <div class="card col pass"><h2>Pass <span id="cP"></span></h2><div id="tP"></div></div>
+  <div class="card col fail"><h2>Fail <span id="cF"></span></h2><div id="tF"></div></div>
+ </div>
+ <p style="color:var(--m);font-size:13px;margin-top:14px">Passing mark: 50%. Click a student to see every answer.</p>
+</div>
+
+</div>
+<script>
+const URL_='https://script.google.com/macros/s/AKfycbxtxL0-GN_Sv8SmyD4ulQyD1u9uMRi4BiKdcluJ7P2WUbh5WEfNNYD9O3Y9uMUXS8mvNg/exec';
+const PASS=50;
+const RIGHT=['A','B','C','D','A','B','C','D','A','B','C','D','A','B','C','D','A','B','C','D'];
+const $=id=>document.getElementById(id);let rows=[],key='';
+
+function login(){key=$('pw').value;load(true)}
+function logout(){key='';$('dash').classList.add('hide');$('login').classList.remove('hide');$('pw').value=''}
+async function load(first){
+  $('err').textContent='';
+  try{
+    const r=await fetch(URL_+'?key='+encodeURIComponent(key));const j=await r.json();
+    if(j.status!=='success'){$('err').textContent='Wrong password.';return}
+    rows=j.data.map(d=>({...d,pct:Math.round(Number(d.Score)/Number(d.Total||20)*100)}));
+    $('login').classList.add('hide');$('dash').classList.remove('hide');render();
+  }catch(e){$('err').textContent='Could not load data. Check your internet connection and the web app URL.'}
+}
+function esc(s){return String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+function table(list,id){
+  if(!list.length)return '<div class="empty">No students</div>';
+  return '<table><tr><th>Name</th><th>Roll no</th><th>Score</th><th>%</th></tr>'+list.map((d,i)=>{
+    let det='';for(let q=1;q<=20;q++){const a=d['Q'+q]||'-',ok=a===RIGHT[q-1];
+      det+=`Q${q}: <b class="${ok?'ok':'no'}">${esc(a)}</b>${ok?'':' (correct '+RIGHT[q-1]+')'}${q%5?' &nbsp;|&nbsp; ':'<br>'}`}
+    return `<tr class="row" onclick="document.getElementById('${id}${i}').classList.toggle('hide')"><td>${esc(d.Name)}</td><td>${esc(d['Roll No'])}</td><td>${esc(d.Score)}/${esc(d.Total)}</td><td>${d.pct}%</td></tr>
+    <tr class="det hide" id="${id}${i}"><td colspan="4">Time taken: <b>${esc(d['Time Taken'])}</b><br>${det}</td></tr>`}).join('')+'</table>';
+}
+function render(){
+  const s=$('srch').value.toLowerCase();
+  const f=rows.filter(d=>(String(d.Name)+' '+String(d['Roll No'])).toLowerCase().includes(s));
+  const p=f.filter(d=>d.pct>=PASS),x=f.filter(d=>d.pct<PASS);
+  $('tP').innerHTML=table(p,'p');$('tF').innerHTML=table(x,'f');
+  $('cP').textContent=p.length;$('cF').textContent=x.length;
+  const all=rows,ap=all.filter(d=>d.pct>=PASS).length;
+  $('sT').textContent=all.length;$('sP').textContent=ap;$('sF').textContent=all.length-ap;
+  $('sA').textContent=(all.length?Math.round(all.reduce((a,d)=>a+d.pct,0)/all.length):0)+'%';
+}
+</script></body></html>
